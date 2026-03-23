@@ -4,17 +4,22 @@ const DARK = '#0f1923'
 
 const defaultReport = {
   cover: {
-    title: '', subtitle: '', eyebrow: '',
-    client: 'Régia Capital', date: '',
-    logo: null, backgroundColor: DARK,
+    title: '',
+    subtitle: '',
+    eyebrow: '',
+    client: 'Régia Capital',
+    date: '',
+    logo: null,
+    backgroundColor: '#0f1923',
   },
   sections: [],
   backCover: {
-    title: '', text: '',
-    address: 'Rua Humaitá 275, 11º andar — Rio de Janeiro, RJ',
+    title: 'regiacapital.com.br',
+    text: '',
+    address: 'Rua Humaitá 275, 11º e 12º andares\nHumaitá, Rio de Janeiro — RJ\nCEP: 22261-005 — Brasil',
     website: 'www.regiacapital.com.br',
     email: 'compliance@regiacapital.com.br',
-    backgroundColor: DARK,
+    backgroundColor: '#0f1923',
   },
 }
 
@@ -369,15 +374,25 @@ function BackCoverEditor({ bc, onChange }) {
   return (
     <Panel title="Contracapa">
       <Field label="Título">
-        <Input value={bc.title} onChange={v => onChange('title', v)} placeholder="regiacapital.com.br" />
+        <Input value={bc.title} onChange={v => onChange('title', v)}
+          placeholder="regiacapital.com.br" />
       </Field>
       <Field label="Texto de encerramento">
         <Textarea value={bc.text} onChange={v => onChange('text', v)} rows={5}
-          placeholder="Texto opcional de encerramento" />
+          placeholder="Texto opcional de encerramento do relatório" />
       </Field>
-      <Field label="Endereço"><Input value={bc.address} onChange={v => onChange('address', v)} /></Field>
-      <Field label="Site"><Input value={bc.website} onChange={v => onChange('website', v)} /></Field>
-      <Field label="E-mail"><Input value={bc.email} onChange={v => onChange('email', v)} /></Field>
+      <Field label="Endereço completo">
+        <Textarea value={bc.address} onChange={v => onChange('address', v)} rows={3}
+          placeholder="Rua Humaitá 275, 11º e 12º andares&#10;Rio de Janeiro — RJ" />
+      </Field>
+      <Field label="Site">
+        <Input value={bc.website} onChange={v => onChange('website', v)}
+          placeholder="www.regiacapital.com.br" />
+      </Field>
+      <Field label="Canal de ouvidoria (e-mail)">
+        <Input value={bc.email} onChange={v => onChange('email', v)}
+          placeholder="compliance@regiacapital.com.br" />
+      </Field>
       <Field label="Cor de fundo">
         <ColorPick value={bc.backgroundColor} onChange={v => onChange('backgroundColor', v)} />
       </Field>
