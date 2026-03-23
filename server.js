@@ -1,3 +1,4 @@
+// ── Substitua todo o conteúdo de server.js por este ─────────────────────────
 import express from 'express'
 import cors from 'cors'
 import multer from 'multer'
@@ -63,7 +64,7 @@ $
         subtitle: s.subtitle || '',
         body: s.body || '',
         image: null,
-        number: '',
+        number: String(i + 1).padStart(2, '0'),
         headerLabel: '',
         imagePosition: 'bottom',
         layout: 'default'
@@ -88,7 +89,7 @@ app.post('/api/generate-pdf', async (req, res) => {
     })
     const page = await browser.newPage()
     await page.setContent(html, { waitUntil: 'networkidle0', timeout: 60000 })
-    await new Promise(r => setTimeout(r, 1200))
+    await new Promise(r => setTimeout(r, 1500))
 
     const pdf = await page.pdf({
       format: 'A4',
@@ -106,7 +107,7 @@ app.post('/api/generate-pdf', async (req, res) => {
   }
 })
 
-// ── Formatação de texto ──────────────────────────────────────────────────────
+// ── Utilitários ──────────────────────────────────────────────────────────────
 function fmt(text) {
   if (!text) return ''
   const lines = text.split('\n').map(l => l.trim()).filter(l => l)
@@ -128,131 +129,394 @@ function fmt(text) {
   return html
 }
 
-function logoOrText(logo, name, h = 44) {
-  if (logo) return `<img src="${logo}" style="height:${h}px;object-fit:contain;max-width:220px" alt="Logo"/>`
-  return `<span style="color:rgba(255,255,255,.6);font-family:'Inter',sans-serif;font-size:18px;font-weight:300;letter-spacing:.14em;text-transform:uppercase">${name || 'RÉGIA'}</span>`
+function logo(src, name, h = 44) {
+  if (src) return `<img src="${src}" style="height:${h}px;object-fit:contain;max-width:200px" alt="Logo"/>`
+  return `<span style="color:rgba(255,255,255,.65);font-family:'Inter',sans-serif;font-size:16px;font-weight:300;letter-spacing:.16em;text-transform:uppercase">${name || 'RÉGIA'}</span>`
 }
 
-// ── Template HTML completo ───────────────────────────────────────────────────
+// ── HTML completo ────────────────────────────────────────────────────────────
 function buildHTML(data) {
   const { cover, sections, backCover } = data
-  const bg    = cover.backgroundColor || '#0f1923'
-  const bbg   = backCover.backgroundColor || bg
+  const bg   = cover.backgroundColor || '#0f1923'
+  const bbg  = backCover.backgroundColor || bg
   const total = sections.length + 2
-  const font  = 'http://localhost:3001/fonts'
+  const docTitle = cover.title || 'Relatório Régia Capital'
+  const font = 'http://localhost:3001/fonts'
 
   const css = `
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap');
+
     @font-face {
-      font-family:'PP Talisman';
-      src:url('${font}/PPTalisman-Regular.woff2') format('woff2'),
-          url('${font}/PPTalisman-Regular.woff') format('woff');
+      font-family: 'PP Talisman';
+      src: url('${font}/PPTalisman-Regular.woff2') format('woff2'),
+           url('${font}/PPTalisman-Regular.woff') format('woff');
     }
-    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Inter',sans-serif;font-weight:300;background:#fff;
-         -webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .page{width:210mm;min-height:297mm;position:relative;
-          page-break-after:always;display:flex;flex-direction:column;overflow:hidden}
 
-    /* CAPA */
-    .cover{background:${bg};padding:56px 68px;justify-content:space-between}
-    .c-eyebrow{font-size:10px;letter-spacing:.18em;text-transform:uppercase;
-               color:rgba(255,255,255,.38);margin-bottom:22px}
-    .c-title{font-family:'PP Talisman',Georgia,serif;font-size:62px;line-height:1.0;
-             color:#fff;font-weight:normal;margin-bottom:20px}
-    .c-subtitle{font-size:15px;color:rgba(255,255,255,.6);line-height:1.65;margin-bottom:8px}
-    .c-divider{width:40px;height:1px;background:rgba(255,255,255,.2);margin:26px 0}
-    .c-meta{font-size:11px;color:rgba(255,255,255,.35);letter-spacing:.05em;line-height:2.0}
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box }
 
-    /* HEADER/FOOTER */
-    .hdr{padding:22px 68px 0;display:flex;align-items:center;gap:18px;height:60px;flex-shrink:0}
-    .hdr-logo{height:24px;object-fit:contain;flex-shrink:0}
-    .hdr-line{flex:1;height:1px;background:#e8e8e5}
-    .hdr-lbl{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#c0bfbc;flex-shrink:0}
-    .ftr{height:44px;padding:0 68px;display:flex;align-items:center;
-         justify-content:space-between;border-top:1px solid #f0f0ee;
-         flex-shrink:0;margin-top:auto}
-    .ftr span{font-size:9.5px;color:#d0cfc9;letter-spacing:.06em}
+    body {
+      font-family: 'Inter', sans-serif;
+      font-weight: 300;
+      background: #fff;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
 
-    /* CONTEÚDO */
-    .content{background:#fff}
-    .body{flex:1;padding:38px 68px 28px;overflow:hidden}
-    .s-num{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#c5c3be;margin-bottom:14px}
-    .s-title{font-family:'PP Talisman',Georgia,serif;font-size:40px;line-height:1.1;
-             color:#0e1820;font-weight:normal;margin-bottom:6px}
-    .s-sub{font-size:14px;color:#a0a09a;line-height:1.5;margin-bottom:20px;
-           padding-bottom:18px;border-bottom:1px solid #f0f0ee}
-    .s-text{font-size:13px;line-height:1.9;color:#282828;font-weight:300}
-    .s-text p{margin-bottom:12px}
-    .s-text ul{padding-left:18px;margin-bottom:12px}
-    .s-text li{margin-bottom:5px}
-    .s-img{width:100%;max-height:210px;object-fit:cover;border-radius:3px;margin-top:20px;display:block}
-    .s-img.top{margin-top:0;margin-bottom:20px;max-height:170px}
-    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:20px}
-    .two-col-img{width:100%;max-height:340px;object-fit:cover;border-radius:3px}
+    /* ── ESTRUTURA BASE ── */
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      position: relative;
+      page-break-after: always;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
 
-    /* HIGHLIGHT (página de KPIs — fundo escuro igual à capa) */
-    .hl-page{background:${bg};padding:52px 68px}
-    .hl-hdr{display:flex;align-items:center;gap:18px;margin-bottom:48px}
-    .hl-hdr-line{flex:1;height:1px;background:rgba(255,255,255,.12)}
-    .hl-title{font-family:'PP Talisman',Georgia,serif;font-size:36px;
-              color:#fff;font-weight:normal;margin-bottom:28px}
-    .hl-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:3px}
-    .hl-item{background:rgba(255,255,255,.05);padding:36px 30px;
-             display:flex;flex-direction:column;justify-content:flex-end;min-height:140px}
-    .hl-val{font-family:'PP Talisman',Georgia,serif;font-size:54px;
-            color:#fff;font-weight:normal;line-height:1;margin-bottom:8px}
-    .hl-lbl{font-size:11.5px;color:rgba(255,255,255,.5);line-height:1.55;font-weight:300}
+    /* ── CAPA ──
+       Referência: ambos os relatórios
+       Logo no topo, título grande em PP Talisman,
+       subtítulo, linha divisória, metadados no rodapé
+    ── */
+    .cover {
+      background: ${bg};
+      padding: 52px 68px 52px;
+      justify-content: space-between;
+    }
+    .cover-top { display: flex; justify-content: space-between; align-items: flex-start; }
+    .cover-top-right {
+      font-family: 'Inter', sans-serif;
+      font-weight: 300;
+      font-size: 10px;
+      color: rgba(255,255,255,.35);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      text-align: right;
+      line-height: 1.8;
+    }
+    .cover-mid { padding: 0 0 32px; }
+    .cover-eyebrow {
+      font-size: 10px;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.38);
+      margin-bottom: 22px;
+      font-weight: 300;
+    }
+    .cover-title {
+      font-family: 'PP Talisman', Georgia, serif;
+      font-size: 64px;
+      line-height: .98;
+      color: #fff;
+      font-weight: normal;
+      margin-bottom: 28px;
+      letter-spacing: -.01em;
+    }
+    .cover-subtitle {
+      font-size: 15px;
+      color: rgba(255,255,255,.55);
+      line-height: 1.65;
+      font-weight: 300;
+    }
+    .cover-rule {
+      width: 40px;
+      height: 1px;
+      background: rgba(255,255,255,.2);
+      margin: 26px 0;
+    }
+    .cover-meta {
+      font-size: 11px;
+      color: rgba(255,255,255,.32);
+      letter-spacing: .06em;
+      line-height: 2.1;
+      text-transform: uppercase;
+    }
 
-    /* SUMÁRIO */
-    .sum-page{background:#f7f7f5;padding:56px 68px}
-    .sum-logo{height:26px;object-fit:contain;margin-bottom:40px;display:block}
-    .sum-title{font-family:'PP Talisman',Georgia,serif;font-size:30px;
-               color:#0e1820;font-weight:normal;margin-bottom:36px}
-    .sum-item{display:flex;align-items:baseline;gap:10px;
-              padding:13px 0;border-bottom:1px solid #e5e5e2}
-    .sum-n{font-size:10px;color:#c0bfbc;width:22px;flex-shrink:0}
-    .sum-name{font-size:13.5px;color:#282828;flex:1;font-weight:300}
-    .sum-pg{font-size:11px;color:#c0bfbc}
+    /* ── CABEÇALHO DE PÁGINA ──
+       Referência: todas as páginas internas
+       Logo + linha horizontal + label da seção
+    ── */
+    .hdr {
+      padding: 22px 68px 0;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      height: 60px;
+      flex-shrink: 0;
+    }
+    .hdr-logo { height: 23px; object-fit: contain; flex-shrink: 0; }
+    .hdr-line { flex: 1; height: 1px; background: #e8e8e5; }
+    .hdr-label {
+      font-size: 9px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: #c2c0bb;
+      flex-shrink: 0;
+    }
 
-    /* FULL IMAGE */
-    .fi-page{position:relative;min-height:297mm}
-    .fi-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-    .fi-overlay{position:absolute;bottom:0;left:0;right:0;
-                background:linear-gradient(transparent,rgba(14,24,32,.88));padding:52px 68px}
-    .fi-title{font-family:'PP Talisman',Georgia,serif;font-size:40px;color:#fff;font-weight:normal}
-    .fi-caption{font-size:12.5px;color:rgba(255,255,255,.6);margin-top:8px;line-height:1.6}
+    /* ── RODAPÉ DE PÁGINA ──
+       Referência: "Política Antidesmatamento 4" / "Climate and Biodiversity Report 2024 6"
+       Nome do documento à esquerda, número à direita
+    ── */
+    .ftr {
+      height: 42px;
+      padding: 0 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid #f0f0ee;
+      flex-shrink: 0;
+      margin-top: auto;
+    }
+    .ftr span {
+      font-size: 9px;
+      color: #ccc;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
 
-    /* CONTRACAPA */
-    .backcover{background:${bbg};padding:56px 68px;justify-content:space-between}
-    .bc-title{font-family:'PP Talisman',Georgia,serif;font-size:34px;
-              color:#fff;font-weight:normal;margin-bottom:14px;line-height:1.15}
-    .bc-text{font-size:13px;color:rgba(255,255,255,.55);line-height:1.9}
-    .bc-clabel{font-size:9px;letter-spacing:.16em;text-transform:uppercase;
-               color:rgba(255,255,255,.28);margin-bottom:10px;margin-top:38px}
-    .bc-cline{font-size:12.5px;color:rgba(255,255,255,.55);line-height:2.1}
+    /* ── CONTEÚDO PADRÃO ── */
+    .content-page { background: #fff; }
+    .body { flex: 1; padding: 38px 68px 24px; overflow: hidden; }
+    .s-num {
+      font-size: 10px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: #c8c5bf;
+      margin-bottom: 16px;
+      font-weight: 300;
+    }
+    .s-title {
+      font-family: 'PP Talisman', Georgia, serif;
+      font-size: 42px;
+      line-height: 1.08;
+      color: #0e1820;
+      font-weight: normal;
+      margin-bottom: 8px;
+    }
+    .s-sub {
+      font-size: 14px;
+      color: #a5a39d;
+      line-height: 1.55;
+      margin-bottom: 22px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid #f0f0ee;
+      font-weight: 300;
+    }
+    .s-text {
+      font-size: 13px;
+      line-height: 1.92;
+      color: #282828;
+      font-weight: 300;
+    }
+    .s-text p { margin-bottom: 13px; }
+    .s-text ul { padding-left: 18px; margin-bottom: 13px; }
+    .s-text li { margin-bottom: 6px; }
+    .s-img {
+      width: 100%;
+      max-height: 210px;
+      object-fit: cover;
+      border-radius: 3px;
+      margin-top: 22px;
+      display: block;
+    }
+    .s-img.top { margin-top: 0; margin-bottom: 22px; max-height: 165px; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 22px; }
+    .two-col-img { width: 100%; max-height: 340px; object-fit: cover; border-radius: 3px; }
 
-    @media print{.page{page-break-after:always}}
+    /* ── DESTAQUES / KPIs ──
+       Referência: páginas 8–9 do Climate and Biodiversity Report
+       Fundo escuro, grade 2x2, valor grande em PP Talisman + label
+    ── */
+    .hl-page {
+      background: ${bg};
+      padding: 48px 68px 52px;
+      flex-direction: column;
+    }
+    .hl-header {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      margin-bottom: 44px;
+    }
+    .hl-header-line { flex: 1; height: 1px; background: rgba(255,255,255,.12); }
+    .hl-doc-label {
+      font-size: 9px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.28);
+    }
+    .hl-section-title {
+      font-family: 'PP Talisman', Georgia, serif;
+      font-size: 36px;
+      color: #fff;
+      font-weight: normal;
+      margin-bottom: 32px;
+      line-height: 1.05;
+    }
+    .hl-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 3px;
+      flex: 1;
+    }
+    .hl-item {
+      background: rgba(255,255,255,.05);
+      padding: 32px 28px 28px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      min-height: 130px;
+    }
+    .hl-value {
+      font-family: 'PP Talisman', Georgia, serif;
+      font-size: 56px;
+      color: #fff;
+      font-weight: normal;
+      line-height: .95;
+      margin-bottom: 10px;
+      letter-spacing: -.02em;
+    }
+    .hl-label {
+      font-size: 11.5px;
+      color: rgba(255,255,255,.48);
+      line-height: 1.6;
+      font-weight: 300;
+    }
+
+    /* ── SUMÁRIO ──
+       Referência: página 2 de ambos os relatórios
+       Grid 2 colunas, itens numerados, linha separadora
+    ── */
+    .sum-page {
+      background: #f7f7f5;
+      padding: 52px 68px;
+      flex-direction: column;
+    }
+    .sum-logo { height: 26px; object-fit: contain; margin-bottom: 40px; display: block; }
+    .sum-title {
+      font-family: 'PP Talisman', Georgia, serif;
+      font-size: 28px;
+      color: #0e1820;
+      font-weight: normal;
+      margin-bottom: 36px;
+      letter-spacing: -.01em;
+    }
+    .sum-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0 48px;
+    }
+    .sum-item {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid #e5e4e0;
+    }
+    .sum-n {
+      font-size: 10px;
+      color: #c0bfbb;
+      width: 22px;
+      flex-shrink: 0;
+      letter-spacing: .04em;
+    }
+    .sum-name {
+      font-size: 13px;
+      color: #282828;
+      flex: 1;
+      font-weight: 300;
+      line-height: 1.4;
+    }
+    .sum-pg {
+      font-size: 10.5px;
+      color: #c0bfbb;
+      flex-shrink: 0;
+    }
+
+    /* ── IMAGEM FULL PAGE ── */
+    .fi-page { position: relative; min-height: 297mm; }
+    .fi-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .fi-overlay {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      background: linear-gradient(transparent, rgba(14,24,32,.9));
+      padding: 52px 68px;
+    }
+    .fi-title {
+      font-family: 'PP Talisman', Georgia, serif;
+      font-size: 42px;
+      color: #fff;
+      font-weight: normal;
+      line-height: 1.08;
+    }
+    .fi-caption {
+      font-size: 12.5px;
+      color: rgba(255,255,255,.6);
+      margin-top: 10px;
+      line-height: 1.65;
+      font-weight: 300;
+    }
+
+    /* ── CONTRACAPA ──
+       Referência: última página de ambos os relatórios
+       Fundo escuro, logo, endereço, canal de ouvidoria
+    ── */
+    .backcover {
+      background: ${bbg};
+      padding: 52px 68px;
+      justify-content: space-between;
+    }
+    .bc-title {
+      font-family: 'PP Talisman', Georgia, serif;
+      font-size: 32px;
+      color: #fff;
+      font-weight: normal;
+      margin-bottom: 16px;
+      line-height: 1.15;
+    }
+    .bc-text {
+      font-size: 13px;
+      color: rgba(255,255,255,.5);
+      line-height: 1.9;
+      font-weight: 300;
+    }
+    .bc-contact-label {
+      font-size: 9px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.25);
+      margin-bottom: 12px;
+      margin-top: 40px;
+    }
+    .bc-contact-line {
+      font-size: 12.5px;
+      color: rgba(255,255,255,.52);
+      line-height: 2.1;
+      font-weight: 300;
+    }
+
+    @media print { .page { page-break-after: always; } }
   `
 
-  // ── funções de página ────────────────────────────────────────────────────
-  const hdr = (c, lbl) => `
+  // ── Blocos de página ────────────────────────────────────────────────────
+  const hdr = (c, label) => `
     <div class="hdr">
       ${c.logo ? `<img src="${c.logo}" class="hdr-logo" alt=""/>` : ''}
       <div class="hdr-line"></div>
-      ${lbl ? `<span class="hdr-lbl">${lbl}</span>` : ''}
+      ${label ? `<span class="hdr-label">${label}</span>` : ''}
     </div>`
 
-  const ftr = (client, n, t) => `
+  const ftr = (docTitle, n, t) => `
     <div class="ftr">
-      <span>${client || 'Régia Capital'}</span>
+      <span>${docTitle}</span>
       <span>${n} / ${t}</span>
     </div>`
 
   const contentPage = (s, n) => {
     const twoCol = (s.layout === 'two-col' || s.type === 'two-col') && s.image
     return `
-    <div class="page content">
+    <div class="page content-page">
       ${hdr(cover, s.headerLabel)}
       <div class="body">
         ${s.number ? `<div class="s-num">${s.number}</div>` : ''}
@@ -270,45 +534,63 @@ function buildHTML(data) {
             ? `<img src="${s.image}" class="s-img" alt=""/>` : ''}
         `}
       </div>
-      ${ftr(cover.client, n, total)}
+      ${ftr(docTitle, n, total)}
     </div>`
   }
 
   const hlPage = (s) => `
     <div class="page hl-page">
-      <div class="hl-hdr">
-        ${cover.logo ? `<img src="${cover.logo}" style="height:24px;object-fit:contain" alt=""/>` : ''}
-        <div class="hl-hdr-line"></div>
+      <div class="hl-header">
+        ${cover.logo ? `<img src="${cover.logo}" style="height:23px;object-fit:contain" alt=""/>` : ''}
+        <div class="hl-header-line"></div>
+        <span class="hl-doc-label">${docTitle}</span>
       </div>
-      ${s.title ? `<div class="hl-title">${s.title}</div>` : ''}
+      ${s.title ? `<div class="hl-section-title">${s.title}</div>` : ''}
       <div class="hl-grid">
         ${(s.highlights || []).map(h => `
           <div class="hl-item">
-            <div class="hl-val">${h.value || ''}</div>
-            <div class="hl-lbl">${h.label || ''}</div>
+            <div class="hl-value">${h.value || ''}</div>
+            <div class="hl-label">${h.label || ''}</div>
           </div>`).join('')}
       </div>
     </div>`
 
-  const sumPage = (s) => `
-    <div class="page sum-page" style="flex-direction:column">
+  const sumPage = (s) => {
+    const items = s.items || []
+    const left  = items.filter((_, i) => i % 2 === 0)
+    const right = items.filter((_, i) => i % 2 !== 0)
+    const paired = left.map((item, i) => [item, right[i]])
+
+    return `
+    <div class="page sum-page">
       ${cover.logo ? `<img src="${cover.logo}" class="sum-logo" alt=""/>` : ''}
       <div class="sum-title">${s.title || 'Sumário'}</div>
-      <div>
-        ${(s.items || []).map((item, i) => `
-          <div class="sum-item">
-            <span class="sum-n">${String(i + 1).padStart(2, '0')}</span>
-            <span class="sum-name">${item.name || ''}</span>
-            <span class="sum-pg">${item.page || ''}</span>
-          </div>`).join('')}
+      <div class="sum-grid">
+        <div>
+          ${left.map((item, i) => `
+            <div class="sum-item">
+              <span class="sum-n">${String(i * 2 + 1).padStart(2, '0')}</span>
+              <span class="sum-name">${item.name || ''}</span>
+              <span class="sum-pg">${item.page || ''}</span>
+            </div>`).join('')}
+        </div>
+        <div>
+          ${right.map((item, i) => `
+            <div class="sum-item">
+              <span class="sum-n">${String(i * 2 + 2).padStart(2, '0')}</span>
+              <span class="sum-name">${item.name || ''}</span>
+              <span class="sum-pg">${item.page || ''}</span>
+            </div>`).join('')}
+        </div>
       </div>
     </div>`
+  }
 
   const fiPage = (s) => `
     <div class="page fi-page" style="page-break-after:always">
       ${s.image
         ? `<img src="${s.image}" class="fi-img" alt=""/>`
-        : `<div style="position:absolute;inset:0;background:#e0e0dd"></div>`}
+        : `<div style="position:absolute;inset:0;background:#e0e0dc"></div>`}
       <div class="fi-overlay">
         ${s.title   ? `<div class="fi-title">${s.title}</div>` : ''}
         ${s.caption ? `<div class="fi-caption">${s.caption}</div>` : ''}
@@ -325,44 +607,54 @@ function buildHTML(data) {
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
-<head><meta charset="UTF-8"><style>${css}</style></head>
+<head>
+<meta charset="UTF-8">
+<style>${css}</style>
+</head>
 <body>
 
-<!-- CAPA -->
+<!-- ── CAPA ── -->
 <div class="page cover">
-  <div>${logoOrText(cover.logo, cover.client, 44)}</div>
+  <div class="cover-top">
+    <div>${logo(cover.logo, cover.client, 44)}</div>
+    <div class="cover-top-right">
+      ${cover.date ? cover.date + '<br>' : ''}
+      ${cover.client ? cover.client : ''}
+    </div>
+  </div>
   <div style="flex:1"></div>
-  <div>
-    ${cover.eyebrow ? `<div class="c-eyebrow">${cover.eyebrow}</div>` : ''}
-    <div class="c-title">${cover.title || 'Título do Relatório'}</div>
-    ${cover.subtitle ? `<div class="c-subtitle">${cover.subtitle}</div>` : ''}
-    <div class="c-divider"></div>
-    <div class="c-meta">
-      ${cover.client ? cover.client + '<br>' : ''}
-      ${cover.date   ? cover.date : ''}
+  <div class="cover-mid">
+    ${cover.eyebrow ? `<div class="cover-eyebrow">${cover.eyebrow}</div>` : ''}
+    <div class="cover-title">${cover.title || 'Título do Relatório'}</div>
+    ${cover.subtitle ? `<div class="cover-subtitle">${cover.subtitle}</div>` : ''}
+    <div class="cover-rule"></div>
+    <div class="cover-meta">
+      ${[cover.client, cover.date].filter(Boolean).join('  ·  ')}
     </div>
   </div>
 </div>
 
 ${sectionsHTML}
 
-<!-- CONTRACAPA -->
+<!-- ── CONTRACAPA ── -->
 <div class="page backcover" style="page-break-after:avoid">
-  <div>${logoOrText(cover.logo, cover.client, 38)}</div>
+  <div>${logo(cover.logo, cover.client, 40)}</div>
   <div>
     ${backCover.title ? `<div class="bc-title">${backCover.title}</div>` : ''}
-    ${backCover.text  ? `<div class="bc-text">${backCover.text}</div>`   : ''}
-    <div class="bc-clabel">Contato</div>
-    <div class="bc-cline">
-      ${[backCover.address, backCover.website, backCover.email].filter(Boolean).join('<br>')}
+    ${backCover.text  ? `<div class="bc-text">${backCover.text}</div>` : ''}
+    <div class="bc-contact-label">Canal de ouvidoria</div>
+    <div class="bc-contact-line">
+      ${[backCover.address, backCover.website, backCover.email]
+        .filter(Boolean).join('<br>')}
     </div>
   </div>
 </div>
 
-</body></html>`
+</body>
+</html>`
 }
 
 app.listen(3001, () => {
-  console.log('✓ Servidor rodando → http://localhost:3001')
-  console.log('✓ Editor disponível → http://localhost:5173')
+  console.log('✓ Servidor Régia → http://localhost:3001')
+  console.log('✓ Editor → http://localhost:5173')
 })
